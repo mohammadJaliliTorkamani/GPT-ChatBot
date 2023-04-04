@@ -17,6 +17,10 @@ def split_logit_bias(logit_bias: str):
     return dictionary
 
 
+def list_models():
+    return openai.Model.list()
+
+
 def iterate_responses(responses):
     for response in responses:
         yield response['choices'][0]['text']
@@ -118,13 +122,20 @@ if __name__ == "__main__":
     while True:
         print("\n1. Chat Completion")
         print("2. Completion")
+        print("3. Models")
 
         option = input("\nEnter an option: ")
 
-        if not option.strip().isdigit() or (int(option) != 1 and int(option) != 2):
+        if not option.strip().isdigit() or (int(option) != 1 and int(option) != 2 and int(option) != 3):
             continue
 
         if option == 1:
             chatCompletion()
-        else:
+        elif option == 2:
             completion()
+        else:
+            models = list_models()
+            print(f"{len(models['data'])} models were found!")
+            print('Here is the list:')
+            print(models['data'])
+
