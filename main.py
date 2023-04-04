@@ -152,6 +152,9 @@ if __name__ == "__main__":
     if not args.api_key:
         print("Please provide api_key first")
         exit(0)
+    if args.best_of <= args.n:
+        print("best_of should be greater than n while using Completion")
+        exit(0)
 
     openai.api_key = args.api_key
 
