@@ -63,7 +63,15 @@ def chatCompletion():
             messages=[{'role': 'user', 'content': prompt}]
         )
 
-        print(responses)
+        if stream:
+            print("stream is on. reading through iteration ...")
+            _str = ""
+            for response in responses:
+                if 'content' in response['choices'][0]['delta']:
+                    _str += response['choices'][0]['delta']['content']
+                    print(_str)
+        else:
+            print(responses)
 
 
 def completion():
