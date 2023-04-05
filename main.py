@@ -4,24 +4,35 @@ import openai
 
 COMPLETION_MODEL = 'text-davinci-003'
 CHAT_COMPLETION_MODEL = 'gpt-3.5-turbo'
-conversations = list()
+QUIT_COMMAND = "#q"
 
 
-class Message:
-    def __init__(self, role, msg):
-        self.role = role
-        self.message = msg
+class Conversation:
+    __conversations = list()
 
-    def __str__(self):
-        return self.role + ': ' + self.message
+    class Message:
+        def __init__(self, role, msg):
+            self.role = role
+            self.message = msg
+
+        def __str__(self):
+            return f'{self.role}: {self.message}'
+
+    @staticmethod
+    def push(role, msg):
+        Conversation.__conversations.append(Conversation.Message(role, msg))
+
+    @staticmethod
+    def get_conversations():
+        return Conversation.__conversations
 
 
-def str2bool(v):
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+def str2bool(_str):
+    if isinstance(_str, bool):
+        return _str
+    if _str.lower() in ('yes', 'true', 't', 'y', '1'):
         return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+    elif _str.lower() in ('no', 'false', 'f', 'n', '0'):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
@@ -39,47 +50,46 @@ def split_logit_bias(logit_bias: str):
 
 
 def list_models():
-    return openai.Model.list()
+    _models = openai.Model.list()
+    return _models['data'], len(_models['data'])
 
 
 def iterate_responses(responses, mode):
     _str = ""
     for response in responses:
         if mode == 'chat_completion':
-            if 'delta' in response['choices'][0] and 'content' in response['choices'][0]['delta']:
-                _str += response['choices'][0]['delta']['content']
-                yield _str.strip()
+            for choice in response['choices']:
+                if 'delta' in choice and 'content' in choice['delta']:
+                    _str += choice['delta']['content']
+                    yield _str.strip()
         elif mode == 'completion':
-            if 'text' in response['choices'][0]:
-                _str += response['choices'][0]['text']
-                yield _str.strip()
+            for choice in response['choices']:
+                if 'text' in choice:
+                    _str += choice['text']
+                    yield _str.strip()
 
 
-def handle_conversation(response, mode):
+def handle_conversation(prompt, response, mode):
+    Conversation.push("user", prompt)
     if args.stream:
-        print("stream is ON. reading through iteration...")
-
         complete_response = ""
         for resp in iterate_responses(response, mode):
             print(resp)
             complete_response = resp
 
-        conversations.append(Message("administrator", complete_response))
+        Conversation.push("administrator", complete_response)
     else:
         for choice in response['choices']:
-            conversations.append(Message("administrator",
-                                         choice['message']['content'] if mode == 'chat_completion'
-                                         else choice['text']))
+            Conversation.push("administrator",
+                              choice['message']['content'] if mode == 'chat_completion' else choice['text'])
         print(response)
 
 
 def chatCompletion():
-    logit_biases = split_logit_bias(args.logit_bias)
-
     while True:
         print("\n-------------------------\n")
-        prompt = input("Enter prompt (#q to quit): ")
-        if prompt == '#q':
+        prompt = input(f'Enter prompt ({QUIT_COMMAND} to quit): ')
+        if prompt == QUIT_COMMAND:
             break
 
         response = openai.ChatCompletion.create(
@@ -91,21 +101,18 @@ def chatCompletion():
             stream=args.stream,
             presence_penalty=args.presence_penalty,
             frequency_penalty=args.frequency_penalty,
-            logit_bias=logit_biases,
+            logit_bias=split_logit_bias(args.logit_bias),
             messages=[{'role': 'user', 'content': prompt}]
         )
 
-        conversations.append(Message("user", prompt))
-        handle_conversation(response, 'chat_completion')
+        handle_conversation(prompt, response, 'chat_completion')
 
 
 def completion():
-    logit_biases = split_logit_bias(args.logit_bias)
-
     while True:
         print("\n-------------------------\n")
-        prompt = input("Enter prompt (#q to quit): ")
-        if prompt == '#q':
+        prompt = input(f'Enter prompt ({QUIT_COMMAND} to quit): ')
+        if prompt == QUIT_COMMAND:
             break
 
         response = openai.Completion.create(
@@ -122,12 +129,11 @@ def completion():
             stop=args.stop,
             presence_penalty=args.presence_penalty,
             frequency_penalty=args.frequency_penalty,
-            logit_bias=logit_biases,
+            logit_bias=split_logit_bias(args.logit_bias),
             prompt=prompt
         )
 
-        conversations.append(Message("user", prompt))
-        handle_conversation(response, 'completion')
+        handle_conversation(prompt, response, 'completion')
 
 
 if __name__ == "__main__":
@@ -180,17 +186,17 @@ if __name__ == "__main__":
         elif option == 2:
             completion()
         elif option == 3:
-            models = list_models()
-            print(f"{len(models['data'])} models were found! Here's the list: ")
-            print(models['data'])
+            models, size = list_models()
+            print(f"{size} models were found! Here's the list: ")
+            print(models)
         elif option == 4:
-            print("Conversation history is :")
-            for message in conversations:
+            print("Conversation history:")
+            for message in Conversation.get_conversations():
                 print(message)
         elif option == 5:
             exit(0)
         else:
             print("Wrong input!")
-
         print("")
+
     print("\n============ THE END ============\n")
