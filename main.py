@@ -1,4 +1,5 @@
 import argparse
+import enum
 
 import openai
 
@@ -9,6 +10,15 @@ QUIT_COMMAND = "#q"
 
 class Conversation:
     __conversations = list()
+
+    class Functionalities(enum.Enum):
+        COMPLETION = 0,
+        CHAT_COMPLETION = 1
+
+    class Role(enum.Enum):
+        SYSTEM = 0
+        USER = 1
+        ADMINISTRATOR = 2
 
     class Message:
         def __init__(self, role, msg):
@@ -57,12 +67,12 @@ def list_models():
 def iterate_responses(responses, mode):
     _str = ""
     for response in responses:
-        if mode == 'chat_completion':
+        if mode == Conversation.Functionalities.CHAT_COMPLETION:
             for choice in response['choices']:
                 if 'delta' in choice and 'content' in choice['delta']:
                     _str += choice['delta']['content']
                     yield _str.strip()
-        elif mode == 'completion':
+        elif mode == Conversation.Functionalities.COMPLETION:
             for choice in response['choices']:
                 if 'text' in choice:
                     _str += choice['text']
@@ -70,18 +80,19 @@ def iterate_responses(responses, mode):
 
 
 def handle_conversation(prompt, response, mode):
-    Conversation.push("user", prompt)
+    Conversation.push(Conversation.Role.USER, prompt)
     if args.stream:
         complete_response = ""
         for resp in iterate_responses(response, mode):
             print(resp)
             complete_response = resp
 
-        Conversation.push("administrator", complete_response)
+        Conversation.push(Conversation.Role.ADMINISTRATOR, complete_response)
     else:
         for choice in response['choices']:
-            Conversation.push("administrator",
-                              choice['message']['content'] if mode == 'chat_completion' else choice['text'])
+            if mode == Conversation.Functionalities.CHAT_COMPLETION:
+                Conversation.push(Conversation.Role.ADMINISTRATOR, choice['message']['content'])
+                Conversation.push(Conversation.Role.ADMINISTRATOR, choice['text'])
         print(response)
 
 
@@ -102,10 +113,10 @@ def chatCompletion():
             presence_penalty=args.presence_penalty,
             frequency_penalty=args.frequency_penalty,
             logit_bias=split_logit_bias(args.logit_bias),
-            messages=[{'role': 'user', 'content': prompt}]
+            messages=[{'role': Conversation.Role.USER, 'content': prompt}]
         )
 
-        handle_conversation(prompt, response, 'chat_completion')
+        handle_conversation(prompt, response, Conversation.Functionalities.CHAT_COMPLETION)
 
 
 def completion():
@@ -133,7 +144,7 @@ def completion():
             prompt=prompt
         )
 
-        handle_conversation(prompt, response, 'completion')
+        handle_conversation(prompt, response, Conversation.Functionalities.COMPLETION)
 
 
 if __name__ == "__main__":
