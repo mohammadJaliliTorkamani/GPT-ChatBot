@@ -7,6 +7,9 @@ COMPLETION_MODEL = 'text-davinci-003'
 CHAT_COMPLETION_MODEL = 'gpt-3.5-turbo'
 QUIT_COMMAND = "#q"
 
+input_is_consumed = False
+prompt_is_consumed = False
+
 
 class Conversation:
     __conversations = list()
@@ -21,7 +24,7 @@ class Conversation:
         ASSISTANT = 2
 
     class Message:
-        def __init__(self, role, msg):
+        def __init__(self, role, msg: str):
             self.role = role
             self.message = msg
 
@@ -29,8 +32,8 @@ class Conversation:
             return f'{self.role}: {self.message}'
 
     @staticmethod
-    def push(role, msg):
-        Conversation.__conversations.append(Conversation.Message(str(role).split(".")[-1].lower(), msg))
+    def push(role, msg: str):
+        Conversation.__conversations.append(Conversation.Message(str(role).split(".")[-1].lower(), msg.strip()))
 
     @staticmethod
     def get_conversations():
@@ -48,20 +51,40 @@ def str2bool(_str):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def split_logit_bias(logit_bias: str):
-    dictionary = {}
-    if logit_bias:
-        array = logit_bias.strip().split(',')
-        for item in array:
-            items = item.split(":")
-            dictionary[items[0]] = int(items[1])
+def get_input():
+    global input_is_consumed
+    if args.option and not input_is_consumed:
+        input_is_consumed = True
+        return args.option.strip()
+    else:
+        input_is_consumed = True
+        return input("Enter an option: ").strip()
 
-    return dictionary
+
+def get_prompt():
+    global prompt_is_consumed
+    if args.prompt and not prompt_is_consumed:
+        prompt_is_consumed = True
+        return args.prompt.strip()
+    else:
+        prompt_is_consumed = True
+        return input(f'Enter prompt ({QUIT_COMMAND} to quit): ').strip()
 
 
 def list_models():
     _models = openai.Model.list()
     return _models['data'], len(_models['data'])
+
+
+def split_logit_bias(logit_bias: str):
+    dictionary = {}
+    if logit_bias:
+        array = logit_bias.strip().split(',')
+        for item in array:
+            items = item.strip().split(":")
+            dictionary[items[0]] = int(items[1])
+
+    return dictionary
 
 
 def iterate_responses(responses, mode):
@@ -100,11 +123,10 @@ def handle_conversation(prompt, response, mode):
 def chatCompletion():
     while True:
         print("\n-------------------------\n")
-        prompt = input(f'Enter prompt ({QUIT_COMMAND} to quit): ')
+        prompt = get_prompt()
         if prompt == QUIT_COMMAND:
             break
 
-        print("############",str(Conversation.Role.USER).split(".")[-1].lower())
         response = openai.ChatCompletion.create(
             model=CHAT_COMPLETION_MODEL,
             max_tokens=args.max_tokens,
@@ -124,7 +146,7 @@ def chatCompletion():
 def completion():
     while True:
         print("\n-------------------------\n")
-        prompt = input(f'Enter prompt ({QUIT_COMMAND} to quit): ')
+        prompt = get_prompt()
         if prompt == QUIT_COMMAND:
             break
 
@@ -166,6 +188,8 @@ if __name__ == "__main__":
     parser.add_argument("--stop", help="stop parameter", type=str, default=None, nargs='?')
     parser.add_argument("--stream", help="stream parameter", type=str2bool, const=True, default=False, nargs='?')
     parser.add_argument("--echo", help="echo parameter", type=str2bool, const=True, default=False, nargs='?')
+    parser.add_argument("--prompt", help="prompt to be used as the input command", default=None, nargs='?')
+    parser.add_argument("--option", help="option to be used as the menu input value", default=None, nargs='?')
     args = parser.parse_args()
 
     if not args.api_key:
@@ -186,9 +210,9 @@ if __name__ == "__main__":
         print("5. Exit")
         print("")
 
-        option = input("Enter an option: ")
+        option = get_input()
 
-        if not option.strip().isdigit():
+        if not option.isdigit():
             print("Wrong input format!")
             continue
 
