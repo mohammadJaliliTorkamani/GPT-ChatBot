@@ -36,8 +36,11 @@ class Conversation:
         Conversation.__conversations.append(Conversation.Message(str(role).split(".")[-1].lower(), msg.strip()))
 
     @staticmethod
-    def get_conversations():
-        return Conversation.__conversations
+    def list_conversations():
+        _str = ""
+        for message in Conversation.__conversations:
+            _str += str(message) + "\n"
+        return _str.strip()
 
 
 def str2bool(_str):
@@ -227,9 +230,7 @@ if __name__ == "__main__":
             print(f"{size} models were found! Here's the list: ")
             print(models)
         elif option == 4:
-            print("Conversation history:")
-            for message in Conversation.get_conversations():
-                print(message)
+            print("Conversation history: \n" + Conversation.list_conversations())
         elif option == 5:
             exit(0)
         else:
