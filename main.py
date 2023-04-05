@@ -18,7 +18,7 @@ class Conversation:
     class Role(enum.Enum):
         SYSTEM = 0
         USER = 1
-        ADMINISTRATOR = 2
+        ASSISTANT = 2
 
     class Message:
         def __init__(self, role, msg):
@@ -30,7 +30,7 @@ class Conversation:
 
     @staticmethod
     def push(role, msg):
-        Conversation.__conversations.append(Conversation.Message(role, msg))
+        Conversation.__conversations.append(Conversation.Message(str(role).split(".")[-1].lower(), msg))
 
     @staticmethod
     def get_conversations():
@@ -87,12 +87,13 @@ def handle_conversation(prompt, response, mode):
             print(resp)
             complete_response = resp
 
-        Conversation.push(Conversation.Role.ADMINISTRATOR, complete_response)
+        Conversation.push(Conversation.Role.ASSISTANT, complete_response)
     else:
         for choice in response['choices']:
             if mode == Conversation.Functionalities.CHAT_COMPLETION:
-                Conversation.push(Conversation.Role.ADMINISTRATOR, choice['message']['content'])
-                Conversation.push(Conversation.Role.ADMINISTRATOR, choice['text'])
+                Conversation.push(Conversation.Role.ASSISTANT, choice['message']['content'])
+            elif mode == Conversation.Functionalities.COMPLETION:
+                Conversation.push(Conversation.Role.ASSISTANT, choice['text'])
         print(response)
 
 
@@ -103,6 +104,7 @@ def chatCompletion():
         if prompt == QUIT_COMMAND:
             break
 
+        print("############",str(Conversation.Role.USER).split(".")[-1].lower())
         response = openai.ChatCompletion.create(
             model=CHAT_COMPLETION_MODEL,
             max_tokens=args.max_tokens,
@@ -113,7 +115,7 @@ def chatCompletion():
             presence_penalty=args.presence_penalty,
             frequency_penalty=args.frequency_penalty,
             logit_bias=split_logit_bias(args.logit_bias),
-            messages=[{'role': Conversation.Role.USER, 'content': prompt}]
+            messages=[{'role': str(Conversation.Role.USER).split(".")[-1].lower(), 'content': prompt}]
         )
 
         handle_conversation(prompt, response, Conversation.Functionalities.CHAT_COMPLETION)
