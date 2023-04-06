@@ -80,7 +80,7 @@ def list_models():
 
 
 def split_logit_bias(logit_bias: str):
-    dictionary = {}
+    dictionary = dict()
     if logit_bias:
         array = logit_bias.strip().split(',')
         for item in array:
