@@ -130,18 +130,22 @@ def chatCompletion():
         if prompt == QUIT_COMMAND:
             break
 
-        response = openai.ChatCompletion.create(
-            model=CHAT_COMPLETION_MODEL,
-            max_tokens=args.max_tokens,
-            temperature=args.temperature,
-            top_p=args.top_p,
-            n=args.n if args.n is not None else 1,
-            stream=args.stream,
-            presence_penalty=args.presence_penalty,
-            frequency_penalty=args.frequency_penalty,
-            logit_bias=split_logit_bias(args.logit_bias),
-            messages=[{'role': str(Conversation.Role.USER).split(".")[-1].lower(), 'content': prompt}]
-        )
+        arguments = {'model': CHAT_COMPLETION_MODEL,
+                     'max_tokens': args.max_tokens,
+                     'temperature': args.temperature,
+                     'top_p': args.top_p,
+                     'n': args.n if args.n is not None else 1,
+                     'stream': args.stream,
+                     'presence_penalty': args.presence_penalty,
+                     'frequency_penalty': args.frequency_penalty,
+                     'logit_bias': split_logit_bias(args.logit_bias),
+                     'messages': [{'role': str(Conversation.Role.USER).split(".")[-1].lower(), 'content': prompt}]
+                     }
+
+        if args.user:
+            arguments.update({'user', args.user})
+
+        response = openai.ChatCompletion.create(**arguments)
 
         handle_conversation(prompt, response, Conversation.Functionalities.CHAT_COMPLETION)
 
@@ -153,23 +157,28 @@ def completion():
         if prompt == QUIT_COMMAND:
             break
 
-        response = openai.Completion.create(
-            model=COMPLETION_MODEL,
-            suffix=args.suffix,
-            max_tokens=args.max_tokens,
-            temperature=args.temperature,
-            top_p=args.top_p,
-            n=args.n if args.n is not None else 1,
-            best_of=args.best_of if args.best_of is not None else 1,
-            stream=args.stream,
-            logprobs=args.log_probs,
-            echo=args.echo,
-            stop=args.stop,
-            presence_penalty=args.presence_penalty,
-            frequency_penalty=args.frequency_penalty,
-            logit_bias=split_logit_bias(args.logit_bias),
-            prompt=prompt
-        )
+        arguments = {
+            'model': COMPLETION_MODEL,
+            'suffix': args.suffix,
+            'max_tokens': args.max_tokens,
+            'temperature': args.temperature,
+            'top_p': args.top_p,
+            'n': args.n if args.n is not None else 1,
+            'best_of': args.best_of if args.best_of is not None else 1,
+            'stream': args.stream,
+            'logprobs': args.log_probs,
+            'echo': args.echo,
+            'stop': args.stop,
+            'presence_penalty': args.presence_penalty,
+            'frequency_penalty': args.frequency_penalty,
+            'logit_bias': split_logit_bias(args.logit_bias),
+            'prompt': prompt
+        }
+
+        if args.user:
+            arguments.update({'user': args.user})
+
+        response = openai.Completion.create(**arguments)
 
         handle_conversation(prompt, response, Conversation.Functionalities.COMPLETION)
 
@@ -189,6 +198,7 @@ if __name__ == "__main__":
     parser.add_argument("--logit_bias", help="logit_bias parameter", type=str, default=None, nargs='?')
     parser.add_argument("--suffix", help="suffix parameter", type=str, default=None, nargs='?')
     parser.add_argument("--stop", help="stop parameter", type=str, default=None, nargs='?')
+    parser.add_argument("--user", help="user parameter", type=str, default=None, nargs='?')
     parser.add_argument("--stream", help="stream parameter", type=str2bool, const=True, default=False, nargs='?')
     parser.add_argument("--echo", help="echo parameter", type=str2bool, const=True, default=False, nargs='?')
     parser.add_argument("--prompt", help="prompt to be used as the input command", default=None, nargs='?')
