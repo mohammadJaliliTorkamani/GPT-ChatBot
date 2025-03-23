@@ -1,0 +1,1 @@
+This is a sample chatbot developed in Python that uses the OpenAI library (for GPT LLM) to implement the chatbot functionality. The goal of this sample project is to demonstrate how to utilize the OpenAI library and its features.
